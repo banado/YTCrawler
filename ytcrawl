@@ -1,0 +1,451 @@
+# YT
+
+#from datetime import datetime
+import pandas as pd #pip install pandas
+import numpy as np
+import requests
+import json
+# + TW
+import time
+import urllib.request
+
+# + YT comment_analytics
+import datetime
+# API를 사용하기 위한 key들
+yt_api_key = "AIzaSyCA5f5dlIUPtJpoN4U_d7vICrw_jDzpMj4" 
+
+
+from apiclient.discovery import build #pip install google-api-python-client
+from apiclient.errors import HttpError #pip install google-api-python-client
+from oauth2client.tools import argparser #pip install oauth2client
+
+
+category_id = {"2" :"Autos & Vehicles",
+"1": "Film & Animation",
+"10":"Music",
+"15" : "Pets & Animals",
+"17" : "Sports",
+"18" : "Short Movies",
+"19": "Travel & Events",
+"20" : "Gaming",
+"21" : "Videoblogging",
+"22" : "People & Blogs",
+"23" : "Comedy",
+"24" : "Entertainment",
+"25" : "News & Politics",
+"26" : "Howto & Style",
+"27" : "Education",
+"28" : "Science & Technology",
+"29" : "Nonprofits & Activism",
+"30" : "Movies",
+"31" : "Anime/Animation",
+"32" : "Action/Adventure",
+"33" : "Classics",
+"34" : "Comedy",
+"35" : "Documentary",
+"36" : "Drama",
+"37" : "Family",
+"38" : "Foreign",
+"39" : "Horror",
+"40" : "Sci-Fi/Fantasy",
+"41" : "Thriller",
+"42" : "Shorts",
+"43" : "Shows",
+"44" : "Trailers"}
+
+def channel(user_name, api_key, num):
+    # Get unique id for each user.
+    
+    part_list = ['snippet','statistics']
+    
+    for part in part_list:
+
+       
+        url = "https://www.googleapis.com/youtube/v3/channels"  # This is the url to extract the data from YouTUbe
+
+        try:
+            parameters = {
+                          'forUsername': user_name,
+                          'part': part,
+                          "maxResults" : num,
+                          "key": api_key
+
+                          }
+            page = requests.request(method="get", url=url, params=parameters,verify=False) # Get JSON data
+            
+            j_results = json.loads(page.text) # Convert JSON to dictionary
+
+            channel_url = "https://www.youtube.com/user/" + user_name
+            
+            if part == 'snippet':
+                title = j_results['items'][0]['snippet']['title']
+                
+                if 'country' in j_results['items'][0]['snippet'].keys():
+                    country = j_results['items'][0]['snippet']['country']
+                else:
+                    country = 'Error'
+                
+            else:
+                subscribers = j_results['items'].pop()['statistics']['subscriberCount']
+            
+            
+            
+                
+        except:
+
+            parameters = {
+              'id': user_name, # id is required instead of forUsername
+              'part': part,
+              "maxResults" : num,
+              "key": api_key
+              }
+
+            page = requests.request(method="get", url=url, params=parameters, verify=False)
+            j_results = json.loads(page.text)
+      
+            channel_url = 'https://www.youtube.com/channel/'+ j_results['items'][0]['id']
+
+            if part == 'snippet':
+                title = j_results['items'][0]['snippet']['title']
+                if 'country' in j_results['items'][0]['snippet'].keys():
+                    country = j_results['items'][0]['snippet']['country']
+                else:
+                    country = 'Error'
+            else:
+                subscribers = j_results['items'].pop()['statistics']['subscriberCount']
+               
+                
+    return  subscribers,user_name, channel_url, country 
+
+    
+def playlist(user_id, api_key, num):
+    
+    # Get playlists 
+    
+    
+    parameters = {"part": "id",
+
+              "part": "snippet",
+              'part': 'contentDetails',
+              "playlistId" : user_id,
+              "maxResults" : num,
+              "key": api_key
+
+              }
+
+    url = "https://www.googleapis.com/youtube/v3/playlistItems"
+    page = requests.request(method="get", url=url, params=parameters, verify=False)
+    j_results = json.loads(page.text)
+
+    video_id = [] # Video id
+    video_date = [] # video published date
+
+    
+    for i in range(0,num):
+        
+        video_id.append(j_results['items'][i]['contentDetails'].get("videoId")) # Get video id 
+        video_date.append(j_results['items'][i]['contentDetails'].get("videoPublishedAt")[:-14]) # Get video id    
+    
+    return video_id, video_date
+
+                        
+def video_stat(video_id, video_date, subscribers, user_name, api_key, num,url_original, country):
+
+    # Get each video data
+    
+    parameters = {"part": "",
+              "id" : "",
+              "maxResults" : num,
+              "key": api_key
+              }
+
+   
+    #    page = requests.request(method="get", url=url, params=parameters) # Get JSON 
+#    j_results = json.loads(page.text) # Convert JSON to dictionary
+
+    view_count = [] # View Count list
+    like_count = [] # Like Count LIst
+    dislike_count = [] #Dislike Count List
+    favorite_count = [] # Favorite count list
+    comment_count = [] # comment count list
+    title = []
+    category = []
+    not_empty_vi = 0
+            
+    
+    for vi_id in video_id: # Loop through each video ID
+        parameters['id'] = vi_id # 
+        parameters['part'] = 'statistics'
+        url = "https://www.googleapis.com/youtube/v3/videos" # URL to get video detail
+        page = requests.request(method="get", url=url, params=parameters, verify= False) # Get JSON
+        j_results = json.loads(page.text) # Convert JSON to dictionary
+        j_results = j_results['items'].pop() # pop out the list
+        
+        if 'commentCount' not in j_results['statistics'].keys() and 'viewCount' not in j_results['statistics'].keys():
+            pos = video_id.index(vi_id)
+            video_date[pos] = 0
+            
+        else:
+            # Append the each item to the corresponding lists
+            
+            not_empty_vi+=1
+            
+            view_count.append(int(j_results['statistics']['viewCount'])) 
+
+            if 'likeCount' not in j_results['statistics'].keys():
+                like_count.append(0)
+            else:
+                like_count.append(int(j_results['statistics']['likeCount']))
+
+            if 'dislikeCount' not in j_results['statistics'].keys():
+                dislike_count.append(0)
+            else:
+                dislike_count.append(int(j_results['statistics']['dislikeCount']))
+
+            if 'commentCount' not in j_results['statistics'].keys():
+                comment_count.append(0)
+            else:
+                comment_count.append(int(j_results['statistics']['commentCount']))
+        
+        
+        parameters['part'] = 'snippet'
+        page = requests.request(method="get", url=url, params=parameters, verify=False) # Get JSON
+        category_result = json.loads(page.text) # Convert JSON to dictionary
+        category_result = category_result['items'].pop() # pop out the list
+        category.append(category_id[category_result['snippet']['categoryId']])
+    
+    
+        
+    subscribe = [subscribers] * not_empty_vi
+    name = [user_name] * not_empty_vi # Generate a list of repeating names of the user
+    url_original = [url_original] * not_empty_vi
+    country_ = [country] * not_empty_vi
+    
+    video_date = list(filter(lambda a: a != 0, video_date))
+
+    # Create dataframe using the lists
+    final = pd.DataFrame(np.column_stack([name, subscribe, video_date, view_count, like_count,dislike_count, comment_count, url_original]), 
+                         columns = ['name','subscriber_count','video_date','view_count','like_count','dislike_count','comment_count','url'])
+    
+    
+    for col in final.columns:
+        if col != 'name' and col != "video_date" and col!='url':
+            final[col] = final[col].astype("int")
+
+    #final = final.groupby('name').mean().astype("int")
+    final['SA (YT)'] = final['like_count'] + final['comment_count']
+    
+    
+    final2 = pd.DataFrame(np.column_stack([name, category,url_original, country_]), columns = ['name','category', 'url', 'country'])
+    
+    
+    return final, final2 #return the dataframe
+
+
+
+def single_stat(url, api_key):
+    parameters = {#"part": "id",
+              'part': 'statistics',
+              #'part': 'snippet',
+              "id" : "",
+              "key": api_key
+              }
+        
+    parameters['id'] = url.split('=')[1]
+    url = "https://www.googleapis.com/youtube/v3/videos" # URL to get video detail
+    page = requests.request(method="get", url=url, params=parameters, verify= False) # Get JSON
+    j_results = json.loads(page.text) # Convert JSON to dictionary
+    j_results = j_results['items'][0]
+
+    view_count = j_results['statistics']['viewCount']
+
+    if 'likeCount' not in j_results['statistics'].keys():
+        like_count =0
+    else:
+        like_count = j_results['statistics']['likeCount']
+    if 'dislikeCount' not in j_results['statistics'].keys():
+        dislike_count = 0
+    else:
+        dislike_count = j_results['statistics']['dislikeCount']
+
+    if 'commentCount' not in j_results['statistics'].keys():
+        comment_count = 0
+    else:
+        comment_count = j_results['statistics']['commentCount']
+    address = 'https://www.youtube.com/watch?v=' + j_results['id']
+
+
+    #### GET TITLE ####
+    parameters['part'] = 'snippet'
+    #url = "https://www.googleapis.com/youtube/v3/videos" # URL to get video detail
+    page = requests.request(method="get", url=url, params=parameters, verfiy=False) # Get JSON
+    j_results = json.loads(page.text) # Convert JSON to dictionary
+    j_results = j_results['items'][0]
+    title =j_results['snippet']['title']
+    
+    if 'tags' not in j_results['snippet'].keys():
+        tag = "-"
+    else:
+        tag = j_results['snippet']['tags']
+        tag = ", ".join(tag)
+    description = j_results['snippet']['description']
+    name = j_results['snippet']['channelTitle']
+    video_date = j_results['snippet']['publishedAt'][:-14]
+        #channel = j_results['snippet']['channelTitle']
+    
+    ### GET Category ###
+    category_result = json.loads(page.text) # Convert JSON to dictionary
+    category_result = category_result['items'].pop() # pop out the list
+    cat = category_id[category_result['snippet']['categoryId']]
+    
+
+    final = pd.DataFrame(np.column_stack([name, video_date, view_count, like_count, dislike_count, comment_count, address,title,tag,description,cat]), 
+                         columns = ['name','post_date','view_count','like_count','dislike_count','comment_count', 'url','title','Tag','Descriptions', 'Category']) 
+   
+    return final #return the dataframe
+
+
+def yt(user, api_key, num):
+
+    user_ids, subscriber,user_name, original_url, country = channel(user, api_key, num)
+    video_id, video_date = playlist(user_ids, api_key, num)
+    result, category = video_stat(video_id,video_date, subscriber, user_name, api_key, num,original_url, country)
+
+    return result, category
+
+# def yt_search(num, option,api_key, pagetoken, order, after_date_time, before_date_time):
+
+#     youtube = build("youtube", "v3", developerKey=api_key)
+#     page = requests.request(method="get", url=url, params=parameters, verify= False)
+
+#     # Call the search.list method to retrieve results matching the specified
+#     # query term.
+#     # relevance
+#     #after_date_time = '2018-01-01'
+#     #before_date_time = '2018-06-30'
+#     search_response = youtube.search().list(q=option,part="id,snippet",
+#                                             maxResults=num,regionCode = 'US', 
+#                                             publishedAfter = "%sT00:00:00Z" %(after_date_time), 
+#                                             publishedBefore = "%sT00:00:00Z" %(before_date_time), 
+#                                             pageToken = pagetoken, order = order,type = 'video'
+#                                            ).execute()
+
+#     return search_response
+def yt_search(num, option,api_key,region, order_type,after_date_time,before_date_time):
+    url = "https://www.googleapis.com/youtube/v3/search"
+    parameters = {"q":option,
+             'part': 'snippet',
+            "maxResults":num, "order" : order_type,
+             "publishedAfter" : "%sT00:00:00Z" %(after_date_time),
+             "publishedBefore" : "%sT00:00:00Z" %(before_date_time),
+#                  'relevanceLanguage' : 'en',
+                  "regionCode": region,
+              "key": api_key}
+    
+    page = requests.request(method="get", url=url, params=parameters, verify = False) # Get JSON
+    j_results = json.loads(page.text) # Convert JSON to dictionary
+    
+    video_id = []
+    channel_id =[]
+    
+    
+    
+    try: # THere might not be enough vidoes
+        for i in range(0,num):
+            channel_id.append(j_results['items'][i]['snippet']['channelId'])
+            video_id.append(j_results['items'][i]['id']['videoId'])
+    except:
+        pass
+    return video_id, channel_id
+
+def yt_detail(channel_id, yt_api_key, num):
+    df = pd.DataFrame()
+
+    subscriber,user_name, original_url, country  = channel(channel_id, yt_api_key, num)
+    df['Subscriber']  =pd.Series(subscriber)
+    df['User'] = user_name
+    df['Channel URL'] = original_url
+    df['Country'] = country
+    #df = df.append(yt_result)
+    #return country
+
+    return df
+    
+ %%time
+
+final_data = pd.DataFrame()
+
+loop_num = 10
+
+
+error_data = {'view_count':0, 'like_count':0, 'comment_count':0, 'dislike_count':0, 'SA (YT)':0,
+           'subscriber_count':0, 'category': None, 'url':None, 'country':None}
+
+after_date_time = '2018-01-01'
+
+before_date_time ='2018-10-31'
+
+
+
+option = 'lg bluetooth speaker'
+
+
+
+for j in range(0,len(after_date_time)):
+    print(after_date_time[j])
+
+    for loop in range(0,loop_num):
+        print('Loop : ',loop)
+        if loop == 0:
+            pagetoken = ''
+
+        search_result = yt_search(50, option,yt_api_key, pagetoken,'relevance',after_date_time[j], before_date_time[j])
+        pagetoken = search_result['nextPageToken']
+
+
+        for i in range(0,len(search_result['items'])):
+            print('Loop : ',loop, 'Video Number : ',i)
+            video_id = search_result['items'][i]['id']['videoId']
+
+            video_url =' https://www.youtube.com/watch?v='+ video_id
+            video_data = single_stat(video_url, yt_api_key) # Video Info
+
+            channel_id = search_result['items'][i]['snippet']['channelId']
+            try:
+                channel_data = yt_detail(channel_id, yt_api_key,3) # Channel Info
+                #country = yt_detail(channel_id, yt_api_key,1)
+            except Exception as e:
+                print(e)
+                channel_data = pd.DataFrame.from_dict(data = error_data,orient = 'index').transpose()
+    #            country = 'Error'
+
+
+    #        video_data['Avg View'] = channel_data['view_count']
+    #        video_data['Avg Like'] = channel_data['like_count']
+    #        video_data['Avg Comment'] = channel_data['comment_count']
+    #        video_data['Avg Dislike'] = channel_data['dislike_count']
+    #        video_data['Avg SA'] = channel_data['SA (YT)']
+            video_data['Subscriber'] = channel_data['Subscriber']
+    #        video_data['Channel Category'] = channel_data['category']
+            video_data['Channel URL'] = channel_data['Channel URL']
+            video_data['Country'] = channel_data['Country']
+
+            final_data = final_data.append(video_data)
+                
+            
+
+final_data = final_data.rename(columns={"name": "Name", "comment_count": "Comment",'dislike_count':'Dislike','like_count':'Like',
+                          'post_date': "Post Date",'title':'Title','url':'Video URL','view_count':'View'})
+        
+num_list = ['View','Comment','Dislike','Like']
+
+for nu in num_list:
+    final_data[nu] = final_data[nu].astype(int)
+
+final_data['SA'] = final_data['Like'] + final_data['Comment']
+final_data = final_data[['Name','View','SA','Comment','Dislike','Post Date','Title','Tag','Descriptions','Category','Video URL','Country','Subscriber','Channel URL']]
+
+
+final_data.to_excel("Z:/2018 LGE HE CAV 모니터링 업무/98. 개인폴더/이동섭/UAECAV/UAE_SA.xlsx")
+    
+
