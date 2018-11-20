@@ -1,0 +1,246 @@
+# YT
+
+#from datetime import datetime
+import pandas as pd #pip install pandas
+import numpy as np
+import requests
+import json
+# + TW
+import time
+import urllib.request
+
+# + YT comment_analytics
+import datetime
+import warnings
+warnings.filterwarnings('ignore')
+
+
+yt_api_key = "AIzaSyCA5f5dlIUPtJpoN4U_d7vICrw_jDzpMj4" 
+
+
+def channel(user_name, api_key):
+    # Get unique id for each user.
+    
+
+
+    url = "https://www.googleapis.com/youtube/v3/channels"  # This is the url to extract the data from YouTUbe
+
+    try:
+        parameters = {
+                      'forUsername': user_name,
+                      'part': 'statistics',
+                    #  "maxResults" : num,
+                      "key": api_key
+
+                      }
+        page = requests.request(method="get", url=url, params=parameters,verify = False) # Get JSON data
+
+        j_results = json.loads(page.text) # Convert JSON to dictionary
+
+        subscribers = j_results['items'].pop()['statistics']['subscriberCount']
+
+    except:
+
+        parameters = {
+          'id': user_name, # id is required instead of forUsername
+          'part': 'statistics',
+         # "maxResults" : num,
+          "key": api_key
+          }
+
+        page = requests.request(method="get", url=url, params=parameters, verify = False)
+
+        j_results = json.loads(page.text)
+
+        subscribers = j_results['items'].pop()['statistics']['subscriberCount']
+                
+
+    return subscribers
+
+
+
+def yt_search(num, option,api_key,region, order_type,after_date_time,before_date_time):
+    url = "https://www.googleapis.com/youtube/v3/search"
+    parameters = {"q":option,
+             'part': 'snippet',
+            "maxResults":num, "order" : order_type,
+             "publishedAfter" : "%sT00:00:00Z" %(after_date_time),
+             "publishedBefore" : "%sT00:00:00Z" %(before_date_time),
+              #    'relevanceLanguage' : 'en',
+                  "regionCode": region,
+              "key": api_key}
+    
+    page = requests.request(method="get", url=url, params=parameters, verify = False) # Get JSON
+    j_results = json.loads(page.text) # Convert JSON to dictionary
+    
+    video_id = []
+    channel_id =[]
+    
+    
+    
+    try: # THere might not be enough vidoes
+        for i in range(0,num):
+            channel_id.append(j_results['items'][i]['snippet']['channelId'])
+            video_id.append(j_results['items'][i]['id']['videoId'])
+    except:
+        pass
+    return video_id, channel_id
+
+
+def single_stat(url, api_key):
+    parameters = {#"part": "id",
+              'part': 'statistics',
+              #'part': 'snippet',
+              "id" : "",
+              "key": api_key
+              }
+        
+    parameters['id'] = url.split('=')[1]
+    url = "https://www.googleapis.com/youtube/v3/videos" # URL to get video detail
+    page = requests.request(method="get", url=url, params=parameters, verify = False) # Get JSON
+    j_results = json.loads(page.text) # Convert JSON to dictionary
+    j_results = j_results['items'][0]
+
+    view_count = j_results['statistics']['viewCount']
+
+    if 'likeCount' not in j_results['statistics'].keys():
+        like_count =0
+    else:
+        like_count = j_results['statistics']['likeCount']
+    if 'dislikeCount' not in j_results['statistics'].keys():
+        dislike_count = 0
+    else:
+        dislike_count = j_results['statistics']['dislikeCount']
+
+    if 'commentCount' not in j_results['statistics'].keys():
+        comment_count = 0
+    else:
+        comment_count = j_results['statistics']['commentCount']
+    address = 'https://www.youtube.com/watch?v=' + j_results['id']
+
+
+    #### GET TITLE ####
+    parameters['part'] = 'snippet'
+    #url = "https://www.googleapis.com/youtube/v3/videos" # URL to get video detail
+    page = requests.request(method="get", url=url, params=parameters, verify = False) # Get JSON
+    j_results = json.loads(page.text) # Convert JSON to dictionary
+    j_results = j_results['items'][0]
+    title =j_results['snippet']['title']
+    
+    if 'tags' not in j_results['snippet'].keys():
+        tag = "-"
+    else:
+        tag = j_results['snippet']['tags']
+        tag = ", ".join(tag)
+    description = j_results['snippet']['description']
+    name = j_results['snippet']['channelTitle']
+    video_date = j_results['snippet']['publishedAt'][:-14]
+        #channel = j_results['snippet']['channelTitle']
+    
+
+    final = pd.DataFrame(np.column_stack([name, video_date, view_count, like_count, dislike_count, comment_count, address,title,tag,description]), 
+                         columns = ['name','post_date','view_count','like_count','dislike_count','comment_count', 'url','title','Tag','Descriptions']) 
+   
+    return final #return the dataframe
+    
+    
+    
+    def sov_search(option, num,region, order_type, after_date_time, before_date_time):
+
+    video_id_list, channel_id_list = yt_search(num, option, yt_api_key,region, order_type, after_date_time,before_date_time)
+
+    count = 0
+
+    for video in video_id_list:
+        url = "https://www.youtube.com/watch?v=" + video
+        if count == 0:
+            data = single_stat(url, yt_api_key)
+            count = 1
+        else:
+            data = data.append(single_stat(url, yt_api_key))
+    count = 0
+    
+    data_channel = []
+    for channel_id in channel_id_list:
+        data_channel.append(channel(channel_id, yt_api_key))
+        
+    
+    data['Views'] = data['view_count'].astype(int)
+    data['Likes'] = data['like_count'].astype(int)
+    data['Comments'] = data['comment_count'].astype(int)
+    data['Dislikes'] = data['dislike_count'].astype(int)
+    data['Total Engagement'] = data['Likes'] + data['Comments']
+    data['Channel'] = data['name']
+    data['Posting URL'] = data['url']
+
+    data['Title'] = data['title']
+    data['Keyword'] = [option] * len(data)
+
+    data.reset_index(inplace = True)
+    
+    data['Subscribers'] = pd.Series(data_channel,name = 'Subscribers').astype(int)
+    data['View/Sub Ratio'] = data['Views'].replace(0,np.nan) / data['Subscribers']
+    
+    
+    data = data[['Channel','Title','Posting URL','Views','Total Engagement','Likes','Dislikes','Comments',"Subscribers",'View/Sub Ratio'
+                 ,'Keyword',"Tag",'Descriptions']]
+    
+    
+    
+    data.index = range(1,len(data)+1)
+    return data
+    
+    
+    print("제작:    김준민")
+print("")
+print("")
+print("")
+print("")
+
+while True:
+    try:
+        print("Enter keywords in one line, separated by commas.")
+        word = input("ex) LG, LG Audio, LG TV : ")
+        word = word.split(",")
+        print("")
+        print("ISO3166 Alpha-2 country code : https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2")
+        region = input("Enter the country code. ex) US or KR : ")
+        region = region.upper()
+        print("")
+        date = int(time.strftime("%#Y"))-1
+        date = str(date)+time.strftime("-%m-%d")
+        after_date_time = input("Enter the earliest date. Skip it if you want to use the date one yar ago. ex) %s : " %(date))
+        print("")
+        # If empty
+        if not after_date_time:
+            after_date_time = date
+        before_date_time = input("Enter the latest date. Skip it if you want to use today's date. ex) %s : " %(time.strftime("%Y-%m-%d")))
+        print("")
+        # If empty
+        if not before_date_time:
+            before_date_time = time.strftime("%Y-%m-%d")
+        
+        order_type = input("Enter the type. (viewCount or relevance) : ")
+        print("")
+        folder = input("Enter the name of the folder. ex) CAV : ")
+        print("")
+        output = input("Enter the file name : ")
+        print("")
+        try:
+            writer = pd.ExcelWriter('Z:/2018 LGE HE CAV 모니터링 업무/98. 개인폴더/이동섭/%s/%s.xlsx' %(folder, output))
+        except:
+            writer = pd.ExcelWriter('Z:/2018 LGE HE CAV 모니터링 업무/98. 개인폴더/MA/%s/%s.xlsx' %(folder, output))
+            
+        num = 50
+
+
+        for i in word:
+            print(i)
+            sov_search(i,num,region, order_type,after_date_time,before_date_time).to_excel(writer, sheet_name=i)
+
+        writer.save()
+        break
+        
+    except Exception as e:
+        print(e)
+        print("Something's wrong. Try again.")
