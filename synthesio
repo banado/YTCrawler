@@ -1,6 +1,6 @@
 import pandas as pd
 
-df=pd.read_excel('C:/Users/A48267/Downloads/소셜액션UAE.xlsx') #신디지오Export 파일 지정
+df=pd.read_excel('C:/Users/A48267/Downloads/소셜액션 중간점검.xlsx') #신디지오Export 파일 지정
 df=df[df.URL!='Deleted or protected mention']#삭제 게시물 제외하기
 df.tail()
 
@@ -9,11 +9,13 @@ socialaction_sum=pd.DataFrame(df.iloc[:,[19,20,21,22,23,24,25,26,27,28,29,31,32,
 df1=df.join(socialaction_sum)
 View_sum=pd.DataFrame(df.iloc[:,[18,30,33]].sum(axis=1),columns=['Views'])
 df2=df1.join(View_sum)
+num_total=df2['Social_Action'].count()
 
 #XBOOMGO top10을 뽑아보즈아~
 XBOOMGo=df2[(df2['Topics/Subtopics'].str.contains("LG WIRELESS")==True)]
 XBOOMGo.drop(df.columns[[0,1,2,3,4,6,8,9,10,11,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44]], axis=1, inplace=True)
 XBOOMGo.sort_values(by='Social_Action',ascending=False,inplace=True)
+num_of_XBOOMGo=XBOOMGo['Social_Action'].count()
 #xboomgo 소셜액션 총 구하기
 XBOOMGo_SA=XBOOMGo['Social_Action'].sum(axis=0)
 XBOOMGo_excel=XBOOMGo.iloc[0:15,:]
@@ -22,6 +24,7 @@ XBOOMGo_excel=XBOOMGo.iloc[0:15,:]
 JBL=df2[(df2['Topics/Subtopics'].str.contains("JBL WIRELESS")==True)]
 JBL.drop(df.columns[[0,1,2,3,4,6,8,9,10,11,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44]], axis=1, inplace=True)
 JBL.sort_values(by='Social_Action',ascending=False,inplace=True)
+num_of_JBL=JBL['Social_Action'].count()
 JBL_SA=JBL['Social_Action'].sum(axis=0)
 JBL_excel=JBL.iloc[0:15,:]
 
@@ -30,6 +33,7 @@ JBL_excel=JBL.iloc[0:15,:]
 BOSE=df2[(df2['Topics/Subtopics'].str.contains("BOSE WIRELESS")==True)]
 BOSE.drop(df.columns[[0,1,2,3,4,6,8,9,10,11,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44]], axis=1, inplace=True)
 BOSE.sort_values(by='Social_Action',ascending=False,inplace=True)
+num_of_BOSE=BOSE['Social_Action'].count()
 BOSE_SA=BOSE['Social_Action'].sum(axis=0)
 BOSE_excel=BOSE.iloc[0:15,:]
 
@@ -38,6 +42,7 @@ BOSE_excel=BOSE.iloc[0:15,:]
 UE=df2[(df2['Topics/Subtopics'].str.contains("ULTIMATE EARS WIRELESS")==True)]
 UE.drop(df.columns[[0,1,2,3,4,6,8,9,10,11,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44]], axis=1, inplace=True)
 UE.sort_values(by='Social_Action',ascending=False,inplace=True)
+num_of_UE=UE['Social_Action'].count()
 UE_SA=UE['Social_Action'].sum(axis=0)
 UE_excel=UE.iloc[0:15,:]
 
@@ -46,6 +51,7 @@ UE_excel=UE.iloc[0:15,:]
 SONY=df2[(df2['Topics/Subtopics'].str.contains("SONY WIRELESS")==True)]
 SONY.drop(df.columns[[0,1,2,3,4,6,8,9,10,11,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44]], axis=1, inplace=True)
 SONY.sort_values(by='Social_Action',ascending=False,inplace=True)
+num_of_SONY=SONY['Social_Action'].count()
 SONY_SA=SONY['Social_Action'].sum(axis=0)
 SONY_excel=SONY.iloc[0:15,:]
 
@@ -71,9 +77,15 @@ summary={
 }
 df_summary=pd.DataFrame(summary,columns=['브랜드','소셜 점유율','소셜액션수'])
 
+num_of_posts={
+    '브랜드': ['XBOOMGo','JBL','BOSE','UE','SONY'],
+    "게시물 수": [num_of_XBOOMGo, num_of_JBL,num_of_BOSE, num_of_UE, num_of_SONY]
+}
+df_number=pd.DataFrame(num_of_posts,columns=['브랜드','게시물 수'])
 
-#파일 저장하라우
-excel_writer=pd.ExcelWriter('C:/Users/A48267/Downloads/UAE.xlsx',engine='xlsxwriter')
+
+#파일 저장
+excel_writer=pd.ExcelWriter('C:/Users/A48267/Downloads/중간점검2.xlsx',engine='xlsxwriter')
 df2.to_excel(excel_writer,index=False,sheet_name='rawfile')
 XBOOMGo_excel.to_excel(excel_writer,index=False,sheet_name='XBOOM GO TOP10')
 JBL_excel.to_excel(excel_writer,index=False,sheet_name='JBL TOP10')
@@ -82,4 +94,5 @@ UE_excel.to_excel(excel_writer,index=False,sheet_name='UE TOP10')
 SONY_excel.to_excel(excel_writer,index=False,sheet_name='SONY TOP10')
 df_summary.to_excel(excel_writer,index=False,sheet_name='summary')
 SA_top10_excel.to_excel(excel_writer, index=False, sheet_name='소셜 Top10')
+df_number.to_excel(excel_writer,index=False, sheet_name='게시물 수')
 excel_writer.save()
