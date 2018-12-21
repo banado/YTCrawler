@@ -72,3 +72,9 @@ df_rising_sony.to_excel(writer,sheet_name='sony',startcol= 6,startrow=0)
 
 
 writer.save()
+
+result = []
+for i in keywords:
+    result.append(df[i.split("+")[0].rstrip()]['top'])
+
+print(result[2])
