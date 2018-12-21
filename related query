@@ -1,0 +1,74 @@
+from pytrends.request import TrendReq
+import pandas as pd
+import os
+
+time='2018-10-01 2018-11-30'
+pytrends = TrendReq(hl = 'en-US', tz=360)
+os.chdir('C:/Users/A48267/Downloads')
+writer=pd.ExcelWriter('연관쿼리test7(%s).xlsx'%time,engine='xlsxwriter')
+
+
+countrylist='US'
+keywords=['lg bluetooth speaker + lg portable speaker + xboom go',
+        'jbl bluetooth speaker + jbl portable speaker + jbl charge + jbl xtreme + jbl pulse',
+        'bose bluetooth speaker + bose portable speaker + bose soundlink', 
+        'ue bluetooth speaker + ue portable speaker + ue boom',
+        'sony bluetooth speaker + sony portable speaker + sony extra bass']
+
+
+
+
+pytrends.build_payload(keywords, cat=0, timeframe= time, geo= countrylist, gprop ='')
+df=pytrends.related_queries()
+
+    
+    
+df_top_lg=df['lg bluetooth speaker']['top']    
+df_rising_lg=df['lg bluetooth speaker']['rising']
+df_top_lg=pd.DataFrame(df_top_lg)
+df_top_lg=df_top_lg.rename(index=str,columns={'query':'Top Keywords'})
+df_rising_lg=pd.DataFrame(df_rising_lg)
+df_rising_lg=df_rising_lg.rename(index=str,columns={'query':'rising Keywords'})
+df_top_lg.to_excel(writer,sheet_name='lg')
+df_rising_lg.to_excel(writer,sheet_name='lg',startcol= 6,startrow=0)
+
+df_top_jbl=df['jbl bluetooth speaker']['top']    
+df_rising_jbl=df['jbl bluetooth speaker']['rising']
+df_top_jbl=pd.DataFrame(df_top_jbl)
+df_top_jbl=df_top_jbl.rename(index=str,columns={'query':'Top Keywords'})
+df_rising_jbl=pd.DataFrame(df_rising_jbl)
+df_rising_jbl=df_rising_jbl.rename(index=str,columns={'query':'rising Keywords'})
+df_top_jbl.to_excel(writer,sheet_name='jbl')
+df_rising_jbl.to_excel(writer,sheet_name='jbl',startcol= 6,startrow=0)
+
+df_top_bose=df['bose bluetooth speaker']['top']    
+df_rising_bose=df['bose bluetooth speaker']['rising']
+df_top_bose=pd.DataFrame(df_top_bose)
+df_top_bose=df_top_bose.rename(index=str,columns={'query':'Top Keywords'})
+df_rising_bose=pd.DataFrame(df_rising_bose)
+df_rising_bose=df_rising_bose.rename(index=str,columns={'query':'rising Keywords'})
+df_top_bose.to_excel(writer,sheet_name='bose')
+df_rising_bose.to_excel(writer,sheet_name='bose',startcol= 6,startrow=0)
+
+df_top_ue=df['ue bluetooth speaker']['top']    
+df_rising_ue=df['ue bluetooth speaker']['rising']
+df_top_ue=pd.DataFrame(df_top_ue)
+df_top_ue=df_top_ue.rename(index=str,columns={'query':'Top Keywords'})
+df_rising_ue=pd.DataFrame(df_rising_ue)
+df_rising_ue=df_rising_ue.rename(index=str,columns={'query':'rising Keywords'})
+df_top_ue.to_excel(writer,sheet_name='ue')
+df_rising_ue.to_excel(writer,sheet_name='ue',startcol= 6,startrow=0)
+
+df_top_sony=df['sony bluetooth speaker']['top']    
+df_rising_sony=df['sony bluetooth speaker']['rising']
+df_top_sony=pd.DataFrame(df_top_sony)
+df_top_sony=df_top_sony.rename(index=str,columns={'query':'Top Keywords'})
+df_rising_sony=pd.DataFrame(df_rising_sony)
+df_rising_sony=df_rising_sony.rename(index=str,columns={'query':'rising Keywords'})
+df_top_sony.to_excel(writer,sheet_name='sony')
+df_rising_sony.to_excel(writer,sheet_name='sony',startcol= 6,startrow=0)
+
+
+
+
+writer.save()
